@@ -225,11 +225,8 @@ class Res2_UNet(nn.Module):
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         self.center_layer = self._make_layer(block, 64, layers[0])
         self.layer2 = self._make_layer(block, 128, layers[0], stride=2)
-        #self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
-        #self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
-        #self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
         self.avgpool = nn.AdaptiveAvgPool2d(1)
-        #self.fc = nn.Linear(512 * block.expansion, num_classes)
+  
         filters = [32, 64, 128, 512]
         is_deconv=False
         decoder_kernel_size=3
@@ -237,8 +234,7 @@ class Res2_UNet(nn.Module):
         self.crop_size=256
         self._up_kwargs={'mode': 'bilinear', 'align_corners': True}
         self.res_blocks = nn.Sequential(*res_blocks)
-        # Decoder
-        #in_channels=filters[3],
+   
         self.decoder2 = DecoderBlock(in_channels=filters[0],
                                      n_filters=filters[1],
                                      kernel_size=decoder_kernel_size,
@@ -291,53 +287,26 @@ class Res2_UNet(nn.Module):
 
     def forward(self, x1_input,x2_input):
         x = torch.cat([x1_input,x2_input],1)
-        #print(x.shape)
         x = self.conv0(x)
-        #print(x.shape)
+       
         x = self.conv1(x)
-        #print(x.shape)
+      
         x = self.bn1(x)
         x = self.relu(x)
         x = self.res_blocks(x)
-        #print(x.shape)
+       
         x_de1 = self.decoder1(x)
-        #print(x_de1.shape)
+      
         x_de2 = self.decoder2(x_de1)
-        #print(x_de2.shape)
+       
         xc = self.center_layer(x_de2)
-        #print(xc.shape)
+      
         xc_r=self.conv2(xc)
-        #print(xc_r.shape)
+        
         x1 = self.layer2(torch.cat([x_de2, xc_r,x_de2, xc_r], 1))
-        #print(x1.shape)
+       
         f= self.finalconv(torch.cat([x1, x_de1], 1))
-        #print(f.shape)
-        
-        '''
-        
-        print(x1.shape)
-        x2 = self.layer2(x1)
-        print(x2.shape)
-        x3 = self.layer3(x2)
-        print(x3.shape)
-        x4 = self.layer4(x3)
-        print(x4.shape)
-        
-        center = self.center(x4)
-        print(center.shape)
- 
-        d4 = self.decoder4(torch.cat([center, x3], 1))
-        print(d4.shape)
-        d3 = self.decoder3(torch.cat([d4, x2], 1))
-        print(d3.shape)
-        d2 = self.decoder2(torch.cat([d3, x1], 1))
-        print(d2.shape)
-        d1 = self.decoder1(torch.cat([d2, x], 1))
-        print(d1.shape)
- 
-        f= self.finalconv(d1)
-        #return tuple([f])
-        '''
+       
         return f
 
 
@@ -368,11 +337,8 @@ def res2net50_v1b_26w_4s(pretrained=False, **kwargs):
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
     model = Res2_UNet(Bottle2neck, [3, 4, 6, 3], baseWidth = 26, scale = 4, **kwargs)
-    if pretrained:
-        #model.load_state_dict(model_zoo.load_url(model_urls['res2net50_v1b_26w_4s']))        
+    if pretrained:   
         pretrained_dict = torch.load('/home/boyu/Res2Net/pretrained/res2net50_v1b_26w_4s-3cf99910.pth')
-       
-        #pretrained_dict = torch.load('/home/boyu/Res2Net/model/res2_unet_whu_data_200.pt')
         net_dict = model.state_dict()
         pretrained_dict = {k: v for k, v in pretrained_dict.items() if ((k in net_dict)and(v.ndim==net_dict[k].ndim)and(k!='bn1.weight')and(k!='bn1.bias')and(k!='bn1.running_mean')and(k!='bn1.running_var'))}
         net_dict.update(pretrained_dict) 
